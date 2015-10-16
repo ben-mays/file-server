@@ -18,14 +18,14 @@
 
 ;; TODO move the read/write wrappers to an option map. Add before/after for each operation.
 (deftype LevelDBChunkStore [database read-wrappers write-wrappers] IChunkStore
-  (write [this key val]
-    (leveldb/put database key ((apply comp write-wrappers) val)))
-  (read [this key]
-    ((apply comp read-wrappers) (leveldb/get database key)))
-  (delete [this key]
-    (leveldb/delete database key))
-  (get-db [this]
-    database))
+         (write [this key val]
+           (leveldb/put database key ((apply comp write-wrappers) val)))
+         (read [this key]
+           ((apply comp read-wrappers) (leveldb/get database key)))
+         (delete [this key]
+           (leveldb/delete database key))
+         (get-db [this]
+           database))
 
 (defn setup-store!
   "Creates a new store with the given name, or returns an existing instance of the store. Returns a ChunkStore instance."

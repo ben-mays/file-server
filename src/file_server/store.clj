@@ -15,19 +15,18 @@
   (reset! metadata-store new-metadata-store))
 
 (defn setup []
-  (let [
-    chunk-store 
-      (chunk-store/setup-store! 
-      "chunk" 
-      {:write-wrappers [coerce-to-byte-array]})
+  (let [chunk-store 
+        (chunk-store/setup-store! 
+         "chunk" 
+         {:write-wrappers [coerce-to-byte-array]})
 
-    metadata-store 
-      (chunk-store/setup-store! 
-      "metadata"
-              {:key-decoder byte-streams/to-string
-               :val-decoder byte-streams/to-string
-               :read-wrappers [coerce-to-clojure]
-               :write-wrappers [coerce-to-string]})]
+        metadata-store 
+        (chunk-store/setup-store! 
+         "metadata"
+         {:key-decoder byte-streams/to-string
+          :val-decoder byte-streams/to-string
+          :read-wrappers [coerce-to-clojure]
+          :write-wrappers [coerce-to-string]})]
 
     (set-chunk-store! chunk-store)
     (set-metadata-store! metadata-store)))
@@ -44,10 +43,10 @@
   "Accepts an input-stream and persists it to the chunk-store under the chunk-id."
   [chunk-id input-stream]
   (with-open [out (java.io.ByteArrayOutputStream.)]
-      (io/copy input-stream out)
+    (io/copy input-stream out)
       ;; Store the byte array into levelstore
-      (.write @chunk-store chunk-id out)
-      (log "write-chunk" (str chunk-id " complete."))))
+    (.write @chunk-store chunk-id out)
+    (log "write-chunk" (str chunk-id " complete."))))
 
 (defn add-chunk-to-manifest
   "Adds a chunk to the manifest for a file."

@@ -5,8 +5,7 @@
             [file-server.handler.upload :as upload-handler]
             [file-server.handler.retrieve :as retrieve-handler]
             [metrics.ring.instrument :refer [instrument]]
-            [metrics.reporters.graphite :as graphite]
-            )
+            [metrics.reporters.graphite :as graphite])
   (:use [org.httpkit.server]
         [compojure.core]
         [compojure.route]
@@ -14,10 +13,10 @@
   (:gen-class))
 
 (def metrics (graphite/reporter {:host "localhost"
-                            :prefix "ghost"
-                            :rate-unit TimeUnit/SECONDS
-                            :duration-unit TimeUnit/MILLISECONDS
-                            :filter MetricFilter/ALL}))
+                                 :prefix "ghost"
+                                 :rate-unit TimeUnit/SECONDS
+                                 :duration-unit TimeUnit/MILLISECONDS
+                                 :filter MetricFilter/ALL}))
 
 (defroutes app-routes
   (GET "/file/:id" [] retrieve-handler/handle-file-retrieve)
@@ -27,7 +26,7 @@
   "Wraps the generic api routes provided by compojure with a ring middleware for multipart handling."
   [] 
   (-> app-routes
-    (instrument)))
+      (instrument)))
 
 (defn -main
   "Setup the server and DB"

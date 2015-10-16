@@ -32,7 +32,7 @@
 ;   (.write (store/get-store "metadata") file-id (assoc record :retrieved true))
 ;   (.delete (store/get-store "data") file-id))
 (defn handle-file-retrieve [request]
-	(println request))
+  (println request))
 ; (defn handle-file-retrieve
 ;   [request]
 ;   (let [file-id (-> request :params :id)

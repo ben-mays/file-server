@@ -1,3 +1,3 @@
 (ns file-server.store.metadata-store)
 
-(defrecord MetadataRecord [file-id retrieved ])
+(defrecord MetadataRecord [file-id retrieved])
