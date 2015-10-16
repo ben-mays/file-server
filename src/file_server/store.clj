@@ -1,58 +1,70 @@
 (ns file-server.store
-  (:import [java.io.ByteArrayOutputStream])
-  (:require [clj-leveldb :as leveldb]
-            [metrics.gauges :refer [gauge-fn]]))
+  (:require [file-server.store.chunk-store :as chunk-store]
+            [file-server.store.metadata-store :as metadata-store]
+            [clojure.java.io :as io])
+  (:use [file-server.util]))
 
-(def ^:private db-prefix "/tmp/leveldb-")
-(def ^:private stores (atom {}))
+(def chunk-store (atom nil))
+(def metadata-store (atom nil))
 
-(defn ^:private reporter-gauge [name db]
-  (gauge-fn (str name "-db-size") #(leveldb/approximate-size db)))
+;; Utility methods to update the stores dynamically, useful for testing in REPL.
+(defn set-chunk-store! [new-chunk-store]
+  (reset! chunk-store new-chunk-store))
 
-; Interface for Store
-(defprotocol IStore
-  (write [this key val])
-  (read [this key])
-  (delete [this key])
-  (get-db ^:private [this]))
+(defn set-metadata-store! [new-metadata-store]
+  (reset! metadata-store new-metadata-store))
 
-;; TODO move the read/write wrappers to an option map. Add before/after for each operation.
-(deftype LevelDBStore [database read-wrappers write-wrappers] IStore
-  (write [this key val]
-    (leveldb/put database key ((apply comp write-wrappers) val)))
-  (read [this key]
-    ((apply comp read-wrappers) (leveldb/get database key)))
-  (delete [this key]
-    (leveldb/delete database key))
-  (get-db [this]
-    database))
+(defn setup []
+  (let [
+    chunk-store 
+      (chunk-store/setup-store! 
+      "chunk" 
+      {:write-wrappers [coerce-to-byte-array]})
 
+    metadata-store 
+      (chunk-store/setup-store! 
+      "metadata"
+              {:key-decoder byte-streams/to-string
+               :val-decoder byte-streams/to-string
+               :read-wrappers [coerce-to-clojure]
+               :write-wrappers [coerce-to-string]})]
 
-(defn setup-store!
-  "Creates a new store with the given name, if none already exist. Returns a Store instance."
-  [store-name & opts]
-  (if (false? (contains? @stores store-name))
-    (let [location (str db-prefix store-name)
-          opts (into {} opts)
-          db (leveldb/create-db location opts)
-          store (->LevelDBStore db (:read-wrappers opts) (:write-wrappers opts))]
+    (set-chunk-store! chunk-store)
+    (set-metadata-store! metadata-store)))
 
-      ;; append the new store handler to the map of stores
-      (swap! stores (assoc @stores store-name store))
+(defn metadata-record-nil?
+  "Returns true if a metadata record exists for the file-id contained in the request data."
+  [request]
+  (let [file-id (-> request :data :filename)
+        record (.read @metadata-store file-id)]
+    (log "metadata-record-nil?" (nil? record))
+    (nil? record)))
 
-      ;; setup a reporter for the store
-      (reporter-gauge store-name db)
-      store)
-    (get @stores store-name)))
+(defn write-chunk 
+  "Accepts an input-stream and persists it to the chunk-store under the chunk-id."
+  [chunk-id input-stream]
+  (with-open [out (java.io.ByteArrayOutputStream.)]
+      (io/copy input-stream out)
+      ;; Store the byte array into levelstore
+      (.write @chunk-store chunk-id out)
+      (log "write-chunk" (str chunk-id " complete."))))
 
-(defn destroy-store!
-  "Destroys a store."
-  [store-name]
-  (do
-    (leveldb/destroy-db (get-db (get stores store-name)))
-    (swap! stores (dissoc stores store-name))))
+(defn add-chunk-to-manifest
+  "Adds a chunk to the manifest for a file."
+  [file-id chunk-id]
+  (let [record (.read @metadata-store file-id)
+        updated-manifest (conj (:manifest record) chunk-id)
+        updated-record (assoc record :manifest updated-manifest)]
+    (log "update-manifest" (str "Updated record for " file-id " to " updated-record "."))
+    (.write @metadata-store file-id updated-record)))
 
-(defn get-store
-  "Returns a store for the given store-name or nil if the store doesn't exist."
-  [store-name]
-  (get @stores store-name))
+(defn initialize-metadata
+  "Initialize the metadata for a new file upload."
+  [request]
+  (let [file-id (-> request :data :filename)
+        record {:content-type (-> request :data :content-type) 
+                :password (-> request :data :file-password)
+                :retrieved false
+                :manifest []}]
+    (log "write-metadata" (str "writing " record))
+    (.write @metadata-store file-id record)))
