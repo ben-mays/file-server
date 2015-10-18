@@ -22,6 +22,7 @@
 (defn parse-headers
   "Parses the raw request headers into a Clojure map and returns a modified request with the data, under the key :data."
   [request]
+  (println request)
   (let [headers (:headers request)
         content-range-header (get headers "content-range")
         content-range (re-find content-range-regex content-range-header)
@@ -34,16 +35,16 @@
               :file-password (get headers "file-password")}]
     (assoc request :data data)))
 
-(defn handle-upload [request]
-  (log "handle-file-upload" (str "new request " request))
+(defn handle-upload 
+  [request]
   (let [request (parse-headers request)
         input-stream (-> request :body)
-        file-id (-> request :data :filename)
-        content-start (-> request :data :content-start)
-        content-end (-> request :data :content-end)
-        chunk-id (str file-id "-" content-start "-" content-end)
-        ;; need to validate headers
-        metadata-exists? (complement (store/metadata-record-nil? request))]
+        {:keys [filename content-start content-end content-length]} (:data request)
+        chunk-id (str filename "-" content-start "-" content-end)
+        ;; TODO: need to validate headers
+        metadata-exists? (false? (nil? (store/get-metadata-record filename)))]
+
+    (println filename metadata-exists?)
 
     ;; check if metadata already exists for this file, if not initialize it. 
     (when-not metadata-exists?
@@ -51,11 +52,14 @@
 
     (try
       (do
+        ;; Check if chunk already exists first
         ;; Store the chunk and update the manifest
         (store/write-chunk chunk-id input-stream)
-        (store/add-chunk-to-manifest file-id chunk-id)
+        (store/add-chunk-to-manifest filename chunk-id)
         ;; Return a 201 on the first chunk and a 200 on other successful requests.
-        (let [status (if metadata-exists? 200 201)]
+        (let [status (if metadata-exists?
+                       200 
+                       201)]
           (build-chunk-upload-response status request)))
       (catch Exception e
         (log "handle-upload" (str (.getMessage e)))

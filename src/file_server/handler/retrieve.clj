@@ -1,50 +1,69 @@
-(ns file-server.handler.retrieve)
+(ns file-server.handler.retrieve
+  (:require [file-server.store :as store])
+  (:use [org.httpkit.server]
+        [clojure.pprint]
+        [clojure.string :only (split)]
+        [file-server.util]))
 
 ;; File Retrieve 
+(def content-range-regex #"[0-9]+-[0-9]+")
 
-; (defn is-authorized? [request metadata]
-;   (let [user-password (-> request :password)
-;         file-password (-> metadata :password)]
-;     (or (nil? file-password) (= user-password file-password))))
+(defn parse-headers
+  "Parses the raw request headers into a Clojure map and returns a modified request with the data, under the key :data."
+  [request]
+  (let [
+  	file-id (-> request :params :file-id)
+  	headers (:headers request)
+        data {
+              :file-id file-id
+              :password (get headers "file-password")}]
+    (assoc request :data data)))
 
-; (defn send-error-response [request metadata]
-;   (if (nil? metadata)
-;     (def error-code 404))
-;   (if (true? (-> metadata :retrieved))
-;     (def error-code 410))
-;   (with-channel request channel
-;     (send! channel
-;            {:status error-code
-;             :body "Something went wrong!"})))
+(defn is-authorized? [user-password file-password]
+  (println file-password user-password)  
+  (or (nil? file-password) (= user-password file-password)))
 
-; (defn send-file [request metadata]
-;   (let [file-id (-> request :params :id)]
-;        (with-channel request channel
-;          (send! channel
-;                 {:status 200
-;                  :headers {"Content-Type" "application/octet-stream"}
-;                  ;; Wrap our byte array into a ByteBuffer
-;                  :body (java.nio.ByteBuffer/wrap (.read (store/get-store "data") file-id))}))))
+(defn chunk-response [data]
+  (str (format "%x" (alength data)) "\r\n" (apply str (map #(char (bit-and % 255)) data)) "\r\n"))
 
-; (defn update-retrieved
-;   "Updates the metadata for a retrieved file and deletes the data"
-;   [file-id record]
-;   (.write (store/get-store "metadata") file-id (assoc record :retrieved true))
-;   (.delete (store/get-store "data") file-id))
-(defn handle-file-retrieve [request]
-  (println request))
-; (defn handle-file-retrieve
-;   [request]
-;   (let [file-id (-> request :params :id)
-;         ;; Thanks to the R in REPL, we can easily recreate a Clojure datastructure from the toString output.
-;         metadata (.read (store/get-store "metadata") file-id)]
-;     (println file-id)
-;     (println metadata)
-;     (if (and
-;          (false? (nil? metadata)) ;; does the metadata exist?
-;          (false? (-> metadata :retrieved)) ;; has it been retrieved before?
-;          (is-authorized? request metadata)) ;; is the user able to access the file?
-;       (do
-;         (send-file request metadata)
-;         (update-retrieved file-id metadata))
-;       (send-error-response request metadata))))
+(defn send-file 
+  "TODO: Support Chunked Encoding from HTTP/1.1"
+  [request metadata]
+  (with-channel request channel
+    (loop [manifest (:manifest metadata)]
+      (println manifest (empty? manifest))
+      (when-not (empty? manifest)
+        (let [chunk-id (first manifest)
+              chunk (store/read-chunk chunk-id)
+              chunk-start (nth (split chunk-id #"-") 1)
+              chunk-end (last (split chunk-id #"-"))]
+          (send! channel {:headers {"Content-Type" "video/mp4"} 
+                          :body (java.nio.ByteBuffer/wrap chunk)}
+                 false))
+        (recur (rest manifest))))))
+
+(defn handle-file-retrieve
+  [request]
+  (println request)
+  (let [request (parse-headers request)
+        file-id (-> request :params :id) 
+        metadata (store/get-metadata-record file-id)
+        manifest (:manifest metadata)]
+    ;(println file-id)
+    (println request)
+    (println metadata)
+    (println manifest)
+    (println (false? (nil? metadata)))
+    (println (false? (:retrieved metadata)))
+    (println (is-authorized? (-> request :data :password) (:password metadata)))
+    (for [i manifest]
+      (println i))
+    (if (and
+         (false? (nil? metadata)) ;; does the metadata exist?
+         (false? (:retrieved metadata)) ;; has it been retrieved before?
+         (is-authorized? (-> request :data :password) (:password metadata))) ;; is the user able to access the file?
+      (do
+        (send-file request metadata)
+        (store/update-retrieved file-id metadata))
+      	(store/delete-file file-id)
+      {:status 400})))

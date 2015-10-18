@@ -6,6 +6,8 @@
 (def ^:private db-prefix "/tmp/leveldb-")
 (def ^:private stores (atom {}))
 
+;; Make a manifest and metadata protocol
+
 (defn ^:private reporter-gauge [name db]
   (gauge-fn (str name "-db-size") #(leveldb/approximate-size db)))
 

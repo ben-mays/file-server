@@ -36,4 +36,4 @@
   (store/setup)
   (let [routes (setup-middleware)]
     ;; Set the max-body size to 2 MB to force us to chunk everything
-    (run-server routes {:port 8081 :max-body 10485760})))
+    (run-server routes {:port 8081 :max-body 10485760 :thread 32})))
