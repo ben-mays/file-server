@@ -14,12 +14,14 @@
 
 (defn request-valid? 
   "Returns true if the request contains the required fields to continue handling."
-  [request-data]
-  ;; (some predicate collection) will evaluate to nil if the predicate is not met.
+  [file request-data]
+  ;; This might be confusing. (some predicate collection) will evaluate to nil if the predicate is not met.
   ;; The `nil?` predicate will return true if any of the required fields are nil.
-  (nil? (some nil?
-    [(:content-start request-data)
-     (:content-end request-data)])))
+  ;; So when (some nil? ...) returns nil, the correct headers are present. We then call nil? on the result to produce a boolean.
+  (or (nil? (some nil?
+        [(:content-start request-data)
+        (:content-end request-data)]))
+      (false? (.get-property file :retrieved))
 
 (defn handle-upload 
   [request]
@@ -34,7 +36,7 @@
       (.init! file request-data))
 
     (try
-      (if (request-valid? request-data)
+      (if (request-valid? file request-data)
         (do
           ;; Check if chunk already exists first
           (when-not (.has-chunk? file chunk-id) 
