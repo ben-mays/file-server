@@ -7,12 +7,12 @@
     * chunk-store
 
   Initially the intention was to move the manifest into a separate store as well, but the p99 for updating a manifest was ~3 ms, 
-  whereas the latency distribution for `write-chunk` was had a long tail up to 250ms per chunk.
+  whereas the latency distribution for `write-chunk` had a long tail up to 250ms per chunk.
 
   The implementation is pretty straightforward, there are two stores. The chunk-store stores the actual byte array corresponding to the
   chunk. The metadata-store stores a map of properties for each file, including the manifest. 
 
-  Unfortunately, Clojure deftype doesn't support doc strings.
+  Unfortunately, Clojure deftype doesn't support doc strings so I've documented the GhostFile implementation with comments.
   "
 
   (:require [file-server.store.leveldb-store :as leveldb-store]

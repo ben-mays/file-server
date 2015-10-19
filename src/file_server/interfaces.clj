@@ -12,7 +12,7 @@
   metadata about the file. The protocol is mostly agnostic regarding the implementation of the storage layer, but makes a few assumptions:
 
     * The purpose of `init!` is to setup any backing data stores or other state. It _should_ be called prior to any other members.
-    * The File instance contains a property map of metadata for each file. This is useful for properties of the file that are not necessary 
+    * A implementation DistributedFile contains a property map of metadata for each file. This is useful for properties of the file that are not necessary 
         for peristing the chunk.
     * The `manifest` of a file is updated with the new chunk location when `add-chunk!` is invoked.
 
