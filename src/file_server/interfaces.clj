@@ -2,9 +2,9 @@
 
 (defprotocol IStore
   "An abstract key value store that supports write, read, delete operations. Implementations of the protocol can be both local or remote."
-  (write! [this key val])
-  (read [this keys])
-  (delete! [this keys]))
+  (write-item! [this key val])
+  (read-item [this keys])
+  (delete-item! [this keys]))
 
 (defprotocol IDistributedFile
   "A protocol defining the DistributedFile type, an append-only file reference that allows manipulation of individual `chunks` of the file. 
@@ -26,4 +26,4 @@
   (get-manifest [this])
   (get-property [this key])
   (set-property [this key val])
-  (delete! [this]))
+  (delete-file! [this]))

@@ -1,17 +1,17 @@
 (ns file-server.store.leveldb-store
   "An implementation of the IStore protocol using LevelDB. Namespace contains useful utility functions for managing the database instances."
-  (:require [clj-leveldb :as leveldb])
-  (:use [file-server.interfaces :only (IStore)]))
+  (:require [clj-leveldb :as leveldb]
+            [file-server.interfaces :as interfaces]))
 
 (def ^:private db-prefix "/tmp/leveldb-")
 (def ^:private stores (atom {}))
 
-(deftype LevelDBStore [database read-wrappers write-wrappers] IStore
-  (write! [this key val]
+(deftype LevelDBStore [database read-wrappers write-wrappers] interfaces/IStore
+  (write-item! [this key val]
     (leveldb/put database key ((apply comp write-wrappers) val)))
-  (read [this keys]
+  (read-item [this keys]
     ((apply comp read-wrappers) (leveldb/get database keys)))
-  (delete! [this keys]
+  (delete-item! [this keys]
     (leveldb/delete database keys)))
 
 (defn setup-store!

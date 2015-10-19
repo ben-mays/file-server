@@ -16,9 +16,9 @@
   "
 
   (:require [file-server.store.leveldb-store :as leveldb-store]
+            [file-server.interfaces :as interfaces]
             [clojure.java.io :as io])
-  (:use [file-server.util]
-        [file-server.interfaces :only (IDistributedFile)]))
+  (:use [file-server.util]))
 
 (def ^:private chunk-store (atom nil))
 (def ^:private metadata-store (atom nil))
@@ -54,12 +54,12 @@
                 (get options :file-password nil) 
                 false
                 {})]
-    (.write! @metadata-store id record)))
+    (.write-item! @metadata-store id record)))
 
 (defn ^:private read-metadata
   "Queries the metadata-store and returns a Metadata record or nil."
   [id]
-  (.read @metadata-store id))
+  (.read-item @metadata-store id))
 
 (defn ^:private write-chunk 
   "Accepts an input-stream and persists it to the chunk-store under the chunk-id."
@@ -67,9 +67,9 @@
   (with-open [out (java.io.ByteArrayOutputStream.)]
     (io/copy input-stream out)
     ;; Store the byte array into the chunk-store
-    (.write! @chunk-store chunk-id out)))
+    (.write-item! @chunk-store chunk-id out)))
 
-(deftype GhostFile [id] IDistributedFile
+(deftype GhostFile [id] interfaces/IDistributedFile
   (init! [this options]
     (when (nil? (read-metadata id)) 
       (initialize-metadata id options)))
@@ -87,7 +87,7 @@
 
   ;; Reads a byte array from the chunk store corresponding to the given chunk-id.
   (get-chunk [this chunk-id]
-   (.read @chunk-store chunk-id))
+   (.read-item @chunk-store chunk-id))
 
   ;; Returns true if the chunk-id given is persisted in the manifest for the file.
   (has-chunk? [this chunk-id]
@@ -104,12 +104,11 @@
   ;; Updates the property map for a File with the key and value given.
   (set-property [this key val]
     (let [record (read-metadata id)]
-      (.write! @metadata-store id (assoc record key val))))
+      (.write-item! @metadata-store id (assoc record key val))))
 
-  ;; Deletes every chunk in the manifest and then deletes the metadata record.
-  (delete! [this]
-    (doall (map #(.delete! @chunk-store %) (keys (.get-manifest this))))
-    (.delete! @metadata-store id)))
+  ;; Deletes every chunk in the manifest. For the Ghost Protocol, we keep a copy of the metadata to return 410s for subsequent GET requests.
+  (delete-file! [this]
+    (doall (map #(.delete-item! @chunk-store %) (keys (.get-manifest this))))))
 
 (defn file-exists? 
   "Returns true if there is no record for the given file-id."

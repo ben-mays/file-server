@@ -34,17 +34,18 @@
       (.init! file request-data))
 
     (try
-      (when (request-valid? request-data)
-        ;; Check if chunk already exists first
-        (when-not (.has-chunk? file chunk-id) 
-          ;; Store the chunk and update the manifest
-          (.add-chunk! file chunk-id content-start content-end (:body request)))
+      (if (request-valid? request-data)
+        (do
+          ;; Check if chunk already exists first
+          (when-not (.has-chunk? file chunk-id) 
+            ;; Store the chunk and update the manifest
+            (.add-chunk! file chunk-id content-start content-end (:body request)))
 
-        ;; Return a 200 with the byte range uploaded in the Content-Range header and the body.
-        {:status 200
-         :body (format "%s-%s/%s" content-start content-end content-length)
-         :headers {"Content-Range" (format "%s-%s/%s" content-start content-end content-length)}}
-        :else {:status 400})
+          ;; Return a 200 with the byte range uploaded in the Content-Range header and the body.
+          {:status 200
+           :body (format "%s-%s/%s" content-start content-end content-length)
+           :headers {"Content-Range" (format "%s-%s/%s" content-start content-end content-length)}})
+        {:status 400})
       (catch Exception e
         (log "handle-upload" (str (.getMessage e)))
         {:status 500}))))

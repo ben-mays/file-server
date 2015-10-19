@@ -46,14 +46,19 @@
 (defn process-file-retrieve [request file]
   (send-file request file)
   (.set-property file :retrieved true)
-  (.delete! file))
+  (.delete-file! file))
 
 (defn handle-file-retrieve
   [request]
   (let [file-id (-> request :params :id)]
     (if (file/file-exists? file-id)
       (let [file (->GhostFile file-id)]
-        (when (valid-file? request file)
-          (process-file-retrieve request file))))
-    ;; if the file doesn't exist or the request wasn't valid, return 404.
-    {:status 404}))
+        ;; cond evaluates each predicate in order, if one evaluates to true it evaluates the following expression and returns the result.
+        (cond
+          ;; has it already been retrieved? if so, return 410 response.
+          (true? (.get-property file :retrieved)) {:status 410}
+          ;; if the file is valid, begin processing the request. process-file-retrieve will send a 200 when complete and close the channel.
+          (valid-file? request file) (process-file-retrieve request file)))
+
+      ;; if the file doesn't exist or the request wasn't valid, return 404.
+      {:status 404})))
