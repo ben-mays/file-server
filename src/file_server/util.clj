@@ -1,7 +1,21 @@
-(ns file-server.util)
+(ns file-server.util
+  (:use [clojure.string :only (split)]))
+
+(def content-range-regex #"[0-9]+-[0-9]+")
 
 (defn log [fn-name msg & args] 
   (println (str "[DEBUG][" fn-name "] " msg args)))
+
+(defn extract-content-header 
+  "Parses the 'Content-Range' header out of a request map and returns a map with the keys :content-start, :content-end and :content-length populated. If "
+  [request]
+  (let [headers (:headers request)
+        content-range-header (get headers "content-range")]
+        (if (not (nil? content-range-header))
+          (let [content-range (re-find content-range-regex content-range-header)]
+            {:content-start (Long/parseLong (first (split content-range #"-")))
+             :content-end (Long/parseLong (last (split content-range #"-")))
+             :content-length (last (split content-range-header #"/"))}))))
 
 ;; Functions to coerce types
 (defn coerce-record-to-map [record]

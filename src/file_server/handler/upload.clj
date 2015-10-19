@@ -1,60 +1,53 @@
 (ns file-server.handler.upload  
   (:use [org.httpkit.server]
-        [clojure.pprint]
-        [clojure.string :only (split)]
         [file-server.util]
-        [file-server.file :as file]))
+        [file-server.file.ghost-file :as file]))
 
 ;; File Upload
 (def filename-regex #"filename=[A-Za-z0-9.]+")
-(def content-range-regex #"[0-9]+-[0-9]+")
 
-(defn parse-headers
-  "Parses the raw request headers into a Clojure map and returns a modified request with the data, under the key :data."
+(defn extract-file-data
+  "Parses the raw request headers to extract metadata (file password, content-type, content-range) about the file transfer."
   [request]
-  (println request)
   (let [headers (:headers request)
-        content-range-header (get headers "content-range")
-        content-range (re-find content-range-regex content-range-header)
-        content-disposition (get headers "content-disposition")
-        data {:filename (last (split (re-find filename-regex content-disposition) #"=")) 
-              :content-type (get headers "content-type")
-              :content-start (Long/parseLong (first (split content-range #"-")))
-              :content-end (Long/parseLong (last (split content-range #"-")))
-              :content-length (last (split content-range-header #"/"))
+        data {:content-type (get headers "content-type")
               :file-password (get headers "file-password")}]
-    (assoc request :data data)))
+    (merge data (extract-content-header request))))
 
 (defn request-valid? 
-  [request]
-  true)
+  "Returns true if the request contains the required fields to continue handling."
+  [request-data]
+  ;; (some predicate collection) will evaluate to nil if the predicate is not met.
+  ;; The `nil?` predicate will return true if any of the required fields are nil.
+  (nil? (some nil?
+    [(:content-start request-data)
+     (:content-end request-data)])))
 
 (defn handle-upload 
   [request]
-  (let [request (parse-headers request)
-        input-stream (-> request :body)
-        file-id (-> request :params :id)
-        {:keys [content-start content-end content-length]} (:data request)
-        chunk-id (str file-id "-" content-start)
-        ;; TODO: need to validate headers
-        file (->File file-id)]
+  (let [file-id (-> request :params :id)
+        file (->GhostFile file-id)
+        request-data (extract-file-data request)
+        {:keys [content-start content-end content-length content-type file-password]} request-data
+        chunk-id (str file-id "-" content-start)]
 
     ;; check if metadata already exists for this file, if not initialize it. 
     (when-not (file/file-exists? file-id)
-      (.init! file (:data request)))
+      (.init! file request-data))
 
     (try
-      (when (request-valid? request)
-            ;; Check if chunk already exists first
-        (when-not (.has-chunk? file chunk-id)
-              ;; Store the chunk and update the manifest
-          (.add-chunk! file chunk-id content-start content-end content-length input-stream))
+      (when (request-valid? request-data)
+        ;; Check if chunk already exists first
+        (when-not (.has-chunk? file chunk-id) 
+          ;; Store the chunk and update the manifest
+          (.add-chunk! file chunk-id content-start content-end (:body request)))
 
-            ;; Return a 201 on the first chunk and a 200 on other successful requests.
+        ;; Return a 200 with the byte range uploaded in the Content-Range header and the body.
         {:status 200
          :body (format "%s-%s/%s" content-start content-end content-length)
          :headers {"Content-Range" (format "%s-%s/%s" content-start content-end content-length)}}
         :else {:status 400})
       (catch Exception e
         (log "handle-upload" (str (.getMessage e)))
+        (throw e)
         {:status 500}))))

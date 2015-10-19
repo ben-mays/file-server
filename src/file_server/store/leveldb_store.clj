@@ -1,25 +1,18 @@
 (ns file-server.store.leveldb-store
-  (:require [clj-leveldb :as leveldb]))
+  "An implementation of the IStore protocol using LevelDB. Namespace contains useful utility functions for managing the database instances."
+  (:require [clj-leveldb :as leveldb])
+  (:use [file-server.interfaces :only (IStore)]))
 
 (def ^:private db-prefix "/tmp/leveldb-")
 (def ^:private stores (atom {}))
 
-; Interface for LevelDBStore
-(defprotocol ILevelDBStore
-  (write! [this key val])
-  (read [this keys])
-  (delete! [this keys])
-  (destroy! [this]))
-
-(deftype LevelDBStore [database read-wrappers write-wrappers] ILevelDBStore
-         (write! [this key val]
-           (leveldb/put database key ((apply comp write-wrappers) val)))
-         (read [this keys]
-           ((apply comp read-wrappers) (leveldb/get database keys)))
-         (delete! [this keys]
-           (leveldb/delete database keys))
-         (destroy! [this]
-           (leveldb/destroy-db database)))
+(deftype LevelDBStore [database read-wrappers write-wrappers] IStore
+  (write! [this key val]
+    (leveldb/put database key ((apply comp write-wrappers) val)))
+  (read [this keys]
+    ((apply comp read-wrappers) (leveldb/get database keys)))
+  (delete! [this keys]
+    (leveldb/delete database keys)))
 
 (defn setup-store!
   "Creates a new LevelDBStore instance with the given name, or returns an existing instance of the store."
@@ -39,9 +32,8 @@
 (defn destroy-store!
   "Destroys a store."
   [store-name]
-  (do
-    (.destroy (get @stores store-name))
-    (swap! stores (dissoc stores store-name))))
+  (.destroy (get @stores store-name))
+  (swap! stores (dissoc stores store-name)))
 
 (defn get-store
   "Returns a store for the given store-name or nil if the store doesn't exist."
