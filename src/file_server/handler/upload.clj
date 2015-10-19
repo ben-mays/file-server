@@ -4,8 +4,6 @@
         [file-server.file.ghost-file :as file]))
 
 ;; File Upload
-(def filename-regex #"filename=[A-Za-z0-9.]+")
-
 (defn extract-file-data
   "Parses the raw request headers to extract metadata (file password, content-type, content-range) about the file transfer."
   [request]
@@ -49,5 +47,4 @@
         :else {:status 400})
       (catch Exception e
         (log "handle-upload" (str (.getMessage e)))
-        (throw e)
         {:status 500}))))
