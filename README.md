@@ -13,7 +13,7 @@ The server accepts PUT requests at the route `/file/:id` with the header `Conten
 
 Simple password authorization is provided via a HTTP header `file-password` on both upload and retrieval. Incorrect passwords will return 404s.
 
-The API has some limitations, see [improvements and limitations](https://github.com/ben-mays/file-server#improvements_/_limitations).
+The API has some limitations, see [improvements and limitations](https://github.com/ben-mays/file-server#improvements--limitations).
 
 
 ## Development / Architecture
