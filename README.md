@@ -22,7 +22,7 @@ I spent a few hours prototyping different approaches and went forward with a des
 
 The source here is a contrived example of the above approach, an attempt to abstract different layers into 'services'. The abstraction layers are roughly the Application (all the handlers, routing), Storage Server (DistributedFile, GhostFile), Peristence (Store, LevelDBStore).
 
-I expanded on the services oriented approach [in a rough design](https://github.com/ben-mays/designs/blob/master/scalable-file-store/) that was out of scope for this project.
+I expanded on the services oriented approach [in a rough design](https://github.com/ben-mays/designs/blob/master/scalable-file-store/scalable-file-store.md) that was out of scope for this project.
 
 ## Usage
 
