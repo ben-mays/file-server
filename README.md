@@ -4,17 +4,17 @@
 
 Ghost protocol server built using http-kit and Google's leveldb (thanks to Factual for vending bindings).
 
+The server has only two routes:
+
+ * `PUT /file/:id` -- requires `Content-Range` header, optional headers are `File-Password`, `Content-Type`
+ * `GET /file/:id` -- optional `File-Password`
+
 The server accepts PUT requests at the route `/file/:id` with the header `Content-Range`. `File-Password` and `Content-Type` headers are optional. When the server receives a GET request, the file is returned iff the file exists and has never been accessed. Once a file is requested, the backing file is deleted but a metadata record remains. On any subsequent GET requests, a 410 response code is given to the client.
 
-Simple password authorization is provided via a HTTP header "file-password" on both upload and retrieval. Incorrect passwords will return 404s.
+Simple password authorization is provided via a HTTP header `file-password` on both upload and retrieval. Incorrect passwords will return 404s.
 
-Some caveats:
+The API has some limitations, see [improvements and limitations](https://github.com/ben-mays/file-server#improvements_/_limitations).
 
-* Re-sending a chunk with a known starting byte will simply no-op and respond with 200. (This is kind of like retryable uploads, as the server doesn't re-process chunks. A separate API could be vended to give the client the chunk ranges missing.)
-* Reuploading files after retrieval is not supported and will return a 400 response.
-* Individual chunk upload requests can change the chunk range, so long as the chunk ranges do not overlap and the content-range header is accurate. 
-* Passing incorrect chunk ranges will lead to data corruption.
-* A client _can_ read a file at anytime during the upload, causing the existing chunks to be deleted and the file to become inaccessible.
 
 ## Development / Architecture
 
@@ -22,7 +22,7 @@ I spent a few hours prototyping different approaches and went forward with a des
 
 The source here is a contrived example of the above approach, an attempt to abstract different layers into 'services'. The abstraction layers are roughly the Application (all the handlers, routing), Storage Server (DistributedFile, GhostFile), Peristence (Store, LevelDBStore).
 
-I expanded on the services oriented approach [https://github.com/ben-mays/designs/blob/master/scalable-file-store/](in a rough design) that was out of scope for this project.
+I expanded on the services oriented approach [in a rough design](https://github.com/ben-mays/designs/blob/master/scalable-file-store/) that was out of scope for this project.
 
 ## Usage
 
@@ -129,7 +129,13 @@ curl -v 'http://localhost:8081/file/test.txt' -X GET -H "file-password: TEST"
 < Server: http-kit
 < Date: Mon, 19 Oct 2015 20:00:37 GMT
 ```
-## Improvements
+## Improvements / Limitations
+
+* Re-sending a chunk with a known starting byte will simply no-op and respond with 200. (This is kind of like retryable uploads, as the server doesn't re-process chunks. A separate API could be vended to give the client the chunk ranges missing.)
+* Reuploading files after retrieval is not supported and will return a 400 response.
+* Individual chunk upload requests can change the chunk range, so long as the chunk ranges do not overlap and the content-range header is accurate. 
+* Passing incorrect chunk ranges will lead to data corruption.
+* A client _can_ read a file at anytime during the upload, causing the existing chunks to be deleted and the file to become inaccessible.
 
 
 
