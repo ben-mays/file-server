@@ -4,6 +4,9 @@
   (println (str "[DEBUG][" fn-name "] " msg args)))
 
 ;; Functions to coerce types
+(defn coerce-record-to-map [record]
+  (select-keys record (keys record)))
+
 (defn coerce-to-string [val]
   (condp = (type val)
     clojure.lang.PersistentVector (.toString val)

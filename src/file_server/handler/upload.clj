@@ -1,23 +1,13 @@
 (ns file-server.handler.upload  
-  (:require [file-server.store :as store])
   (:use [org.httpkit.server]
         [clojure.pprint]
         [clojure.string :only (split)]
-        [file-server.util]))
+        [file-server.util]
+        [file-server.file :as file]))
 
 ;; File Upload
 (def filename-regex #"filename=[A-Za-z0-9.]+")
 (def content-range-regex #"[0-9]+-[0-9]+")
-
-(defn build-chunk-upload-response
-  [status request]
-  (let [basic-resp {:status status}
-        start (-> request :data :content-start)
-        end (-> request :data :content-end)
-        length (-> request :data :content-length)
-        range-header (str start "-" end "/" length)] ;; "$start-$end/$length"
-    (merge basic-resp {:headers {"Range" range-header}
-                       :body range-header})))
 
 (defn parse-headers
   "Parses the raw request headers into a Clojure map and returns a modified request with the data, under the key :data."
@@ -31,36 +21,40 @@
               :content-type (get headers "content-type")
               :content-start (Long/parseLong (first (split content-range #"-")))
               :content-end (Long/parseLong (last (split content-range #"-")))
-              :content-length (Long/parseLong (last (split content-range-header #"/")))
+              :content-length (last (split content-range-header #"/"))
               :file-password (get headers "file-password")}]
     (assoc request :data data)))
+
+(defn request-valid? 
+  [request]
+  true)
 
 (defn handle-upload 
   [request]
   (let [request (parse-headers request)
         input-stream (-> request :body)
-        {:keys [filename content-start content-end content-length]} (:data request)
-        chunk-id (str filename "-" content-start "-" content-end)
+        file-id (-> request :params :id)
+        {:keys [content-start content-end content-length]} (:data request)
+        chunk-id (str file-id "-" content-start)
         ;; TODO: need to validate headers
-        metadata-exists? (false? (nil? (store/get-metadata-record filename)))]
-
-    (println filename metadata-exists?)
+        file (->File file-id)]
 
     ;; check if metadata already exists for this file, if not initialize it. 
-    (when-not metadata-exists?
-      (store/initialize-metadata request))
+    (when-not (file/file-exists? file-id)
+      (.init! file (:data request)))
 
     (try
-      (do
-        ;; Check if chunk already exists first
-        ;; Store the chunk and update the manifest
-        (store/write-chunk chunk-id input-stream)
-        (store/add-chunk-to-manifest filename chunk-id)
-        ;; Return a 201 on the first chunk and a 200 on other successful requests.
-        (let [status (if metadata-exists?
-                       200 
-                       201)]
-          (build-chunk-upload-response status request)))
+      (when (request-valid? request)
+            ;; Check if chunk already exists first
+        (when-not (.has-chunk? file chunk-id)
+              ;; Store the chunk and update the manifest
+          (.add-chunk! file chunk-id content-start content-end content-length input-stream))
+
+            ;; Return a 201 on the first chunk and a 200 on other successful requests.
+        {:status 200
+         :body (format "%s-%s/%s" content-start content-end content-length)
+         :headers {"Content-Range" (format "%s-%s/%s" content-start content-end content-length)}}
+        :else {:status 400})
       (catch Exception e
         (log "handle-upload" (str (.getMessage e)))
-        (build-chunk-upload-response 500 request)))))
+        {:status 500}))))
