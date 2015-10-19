@@ -14,14 +14,16 @@
   (GET "/file/:id" [] retrieve-handler/handle-file-retrieve)
   (PUT "/file/:id" [] upload-handler/handle-upload))
 
-(defn setup-leveldb []
+(defn setup-leveldb [db-dir]
   "Initializes the backing stores for the File API."
   (let [chunk-store (leveldb-store/setup-store! 
          "chunk" 
+         db-dir
          {:write-wrappers [coerce-to-byte-array]})
 
-        metadata-store (leveldb-store/setup-store! 
+        metadata-store (leveldb-store/setup-store!
          "metadata"
+         db-dir
          {:key-decoder byte-streams/to-string
           :val-decoder byte-streams/to-string
           ;; Read and write wrappers are functions that transform the value of a read or write. The functions in the list are composed from left to right. 
@@ -39,6 +41,8 @@
 (defn -main
   "Setup the server and DB"
   [& args]
-  (println "Starting server")
-  (setup-leveldb)
-  (run-server app-routes {:port 8081 :max-body 10485760 :thread 32}))
+  (let [port (Integer/parseInt (nth args 0 "8080"))
+        db-dir (nth args 1 "/tmp/")]
+    (println (format "Starting server on port %s, using %s for database root." port db-dir))
+    (setup-leveldb db-dir)
+    (run-server app-routes {:port port :max-body 10485760 :thread 32})))

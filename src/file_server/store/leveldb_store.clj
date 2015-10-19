@@ -3,7 +3,7 @@
   (:require [clj-leveldb :as leveldb]
             [file-server.interfaces :as interfaces]))
 
-(def ^:private db-prefix "/tmp/leveldb-")
+(def ^:private db-prefix "leveldb")
 (def ^:private stores (atom {}))
 
 (deftype LevelDBStore [database read-wrappers write-wrappers] interfaces/IStore
@@ -16,9 +16,9 @@
 
 (defn setup-store!
   "Creates a new LevelDBStore instance with the given name, or returns an existing instance of the store."
-  [store-name & opts]
+  [store-name db-dir & opts]
   (if (false? (contains? @stores store-name))
-    (let [location (str db-prefix store-name)
+    (let [location (format "%s/%s-%s" db-dir db-prefix store-name)
           opts (into {} opts)
           db (leveldb/create-db location opts)
           store (->LevelDBStore db (:read-wrappers opts) (:write-wrappers opts))]

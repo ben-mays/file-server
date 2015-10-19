@@ -21,6 +21,7 @@
 (defn send-chunk 
   "Sends a chunk of a file into the channel, with the content-type and content-range headers set."
   [channel file chunk-record]
+
   (let [file-size (or (.get-property file :size) "*")
         content-type (or (.get-property file :content-type) "application/octet-stream")
         chunk-start (:start chunk-record)
@@ -36,12 +37,12 @@
   "Sends a response to the client for each chunk in the file requested. Prior to sending a response, all chunks are ordered by the first byte index (:start) and then 
   sent sequentially. Support for HTTP/1.1 Chunked Encoding is not implemented, but could be added by simply sending a few extra characters in the :body field of the response."
   [request file]
+  (println "Sending file")
   (with-channel request channel ;; open a 'channel' (basically a socket wrapper) and send each chunk.
     (loop [chunks (sort-by :start (vals (.get-manifest file)))]
       (when-not (empty? chunks)
         (send-chunk channel file (first chunks))
-        (recur (rest chunks))))
-    (send! channel {:status 200})))
+        (recur (rest chunks))))))
 
 (defn process-file-retrieve [request file]
   (send-file request file)
@@ -58,7 +59,9 @@
           ;; has it already been retrieved? if so, return 410 response.
           (true? (.get-property file :retrieved)) {:status 410}
           ;; if the file is valid, begin processing the request. process-file-retrieve will send a 200 when complete and close the channel.
-          (valid-file? request file) (process-file-retrieve request file)))
+          (valid-file? request file)
+            (do (process-file-retrieve request file)
+                {:status 200})))
 
       ;; if the file doesn't exist or the request wasn't valid, return 404.
       {:status 404})))

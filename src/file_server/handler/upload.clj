@@ -21,7 +21,7 @@
   (or (nil? (some nil?
         [(:content-start request-data)
         (:content-end request-data)]))
-      (false? (.get-property file :retrieved))
+      (false? (.get-property file :retrieved))))
 
 (defn handle-upload 
   [request]
@@ -30,6 +30,8 @@
         request-data (extract-file-data request)
         {:keys [content-start content-end content-length content-type file-password]} request-data
         chunk-id (str file-id "-" content-start)]
+
+    (println (format "[%s] Received upload request for chunk %s." file-id chunk-id))
 
     ;; check if metadata already exists for this file, if not initialize it. 
     (when-not (file/file-exists? file-id)
@@ -42,6 +44,7 @@
           (when-not (.has-chunk? file chunk-id) 
             ;; Store the chunk and update the manifest
             (.add-chunk! file chunk-id content-start content-end (:body request)))
+            (println (format "[%s] Wrote chunk %s." file-id chunk-id))
 
           ;; Return a 200 with the byte range uploaded in the Content-Range header and the body.
           {:status 200
