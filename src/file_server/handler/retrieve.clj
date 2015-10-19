@@ -37,7 +37,6 @@
   "Sends a response to the client for each chunk in the file requested. Prior to sending a response, all chunks are ordered by the first byte index (:start) and then 
   sent sequentially. Support for HTTP/1.1 Chunked Encoding is not implemented, but could be added by simply sending a few extra characters in the :body field of the response."
   [request file]
-  (println "Sending file")
   (with-channel request channel ;; open a 'channel' (basically a socket wrapper) and send each chunk.
     (loop [chunks (sort-by :start (vals (.get-manifest file)))]
       (when-not (empty? chunks)
