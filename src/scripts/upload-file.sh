@@ -1,3 +1,4 @@
-upload-file.sh
+#/bin/bash
 
-java -jar $CLIENT JAR
+# Uses the file-server-client jar to upload files
+java -jar ../../bin/file-server-client-0.1.0-SNAPSHOT-standalone.jar $@
