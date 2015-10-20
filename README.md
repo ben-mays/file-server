@@ -171,5 +171,10 @@ curl -v 'http://localhost:8081/file/test.txt' -X GET -H "file-password: TEST"
 * Passing incorrect chunk ranges will lead to data corruption.
 * A client _can_ read a file at anytime during the upload, causing the existing chunks to be deleted and the file to become inaccessible.
 
+# Other
 
+There is a `verify-upload.sh` script that uploads a video, retrieves it and compares their checksums. This was useful for regression testing, identifying corruption and testing different file types.
+Here is an example:
+
+[![asciicast](https://asciinema.org/a/24j9wkdnu6fj8m0a3ilbes2ph.png)](https://asciinema.org/a/24j9wkdnu6fj8m0a3ilbes2ph?t=12)
 
