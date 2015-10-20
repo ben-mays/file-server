@@ -1,6 +1,4 @@
-# Approach
-
-## Overview 
+# Overview 
 
 Ghost protocol server built using http-kit and Google's leveldb (thanks to Factual for vending bindings).
 
@@ -15,8 +13,7 @@ Simple password authorization is provided via a HTTP header `file-password` on b
 
 The API has some limitations, see [improvements and limitations](https://github.com/ben-mays/file-server#improvements--limitations).
 
-
-## Development / Architecture
+# Development / Architecture
 
 I spent a few hours prototyping different approaches and went forward with a design centered around indepedent storage for each chunk and a consistent centralized manifest to place them back together. This allows the storage system to abstract away placement of chunks from the application and place them in the most appropriate place based on implementation. My main goals (beyond the simple protocol) were to support extremely large file uploads and upload files as quickly as possible. In this approach, files can be uploaded in parallel, to/from different servers, with the manifest being the only point of contention. Because the manifest is append-only, writes to the manifest _should_ be extremely quick and consistent. 
 
@@ -24,9 +21,9 @@ The source here is a contrived example of the above approach, an attempt to abst
 
 I expanded on the services oriented approach [in a rough design](https://github.com/ben-mays/designs/blob/master/scalable-file-store/scalable-file-store.md) that was out of scope for this project.
 
-## Usage
+# Usage
 
-### Server
+## Server
 
 To start the server, you can simply run `server.sh` in the `scripts` directory. The server takes two optional positional arguments: `server.sh PORT DB-ROOT`
 
@@ -40,11 +37,11 @@ $ ./server.sh
 Starting server on port 8080, using /tmp/ for database root.
 ```
 
-### Clients
+## Clients
 
 Clients can be implemented by simply using the proper headers. Example cURL requests are provided below. The server doesn't support [chunked transfer encoding](https://en.wikipedia.org/wiki/Chunked_transfer_encoding), and the body of the request is a raw byte array. Clients will have to process responses synchronously or parse the `Content-Range` header in the response to place the chunk accurately.
 
-#### Java / Bash 
+### Java / Bash 
 
 In the `bin` directory, there is a JVM client that supports upload files and it is accessbile via `scripts/upload-file.sh`.
 
@@ -163,7 +160,7 @@ curl -v 'http://localhost:8081/file/test.txt' -X GET -H "file-password: TEST"
 < Server: http-kit
 < Date: Mon, 19 Oct 2015 20:00:37 GMT
 ```
-## Improvements / Limitations
+# Improvements / Limitations
 
 * Re-sending a chunk with a known starting byte will simply no-op and respond with 200. (This is kind of like retryable uploads, as the server doesn't re-process chunks. A separate API could be vended to give the client the chunk ranges missing.)
 * Reuploading files after retrieval is not supported and will return a 400 response.
@@ -171,7 +168,7 @@ curl -v 'http://localhost:8081/file/test.txt' -X GET -H "file-password: TEST"
 * Passing incorrect chunk ranges will lead to data corruption.
 * A client _can_ read a file at anytime during the upload, causing the existing chunks to be deleted and the file to become inaccessible.
 
-# Other
+# Misc
 
 There is a `verify-upload.sh` script that uploads a video, retrieves it and compares their checksums. This was useful for regression testing, identifying corruption and testing different file types.
 Here is an example:
