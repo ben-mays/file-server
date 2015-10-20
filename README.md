@@ -42,7 +42,7 @@ Starting server on port 8080, using /tmp/ for database root.
 
 ### Clients
 
-Clients can be implemented by simply using the proper headers. Example cURL requests are provided below. Note, the server doesn't support [chunked transfer encoding](https://en.wikipedia.org/wiki/Chunked_transfer_encoding), the body of the request is a raw byte array, so clients will have to process requests synchronously or parse the `Content-Range` header in the response to place the chunk accurately.
+Clients can be implemented by simply using the proper headers. Example cURL requests are provided below. The server doesn't support [chunked transfer encoding](https://en.wikipedia.org/wiki/Chunked_transfer_encoding), and the body of the request is a raw byte array. Clients will have to process responses synchronously or parse the `Content-Range` header in the response to place the chunk accurately.
 
 #### Java / Bash 
 
