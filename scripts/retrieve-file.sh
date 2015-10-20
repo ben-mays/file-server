@@ -15,7 +15,6 @@ fi
 
 if [ -n $outputPath ]
 then
-    echo "$outputPath"
     cmd="$cmd -o $outputPath"
 fi
 
