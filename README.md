@@ -27,12 +27,47 @@ I expanded on the services oriented approach [in a rough design](https://github.
 ## Usage
 
 ### Server
-FIXME: explanation
 
-    $ java -jar file-server-0.1.0-standalone.jar [args]
+To start the server, you can simply run `server.sh` in the `scripts` directory. The server takes two optional positional arguments: `server.sh PORT DB-ROOT`
+
+For example:
+
+```
+✔ file-server
+$ cd scripts
+✔ file-server/scripts
+$ ./server.sh
+Starting server on port 8080, using /tmp/ for database root.
+```
 
 ### Clients
 
+Clients can be implemented by simply using the proper headers. Example cURL requests are provided below. Note, the server doesn't support [chunked transfer encoding](https://en.wikipedia.org/wiki/Chunked_transfer_encoding), the body of the request is a raw byte array, so clients will have to process requests synchronously or parse the `Content-Range` header in the response to place the chunk accurately.
+
+#### Java / Bash 
+
+In the `bin` directory, there is a JVM client that supports upload files and it is accessbile via `scripts/upload-file.sh`.
+
+```
+✔ file-server/scripts
+$ ./upload-file.sh -h
+Ghost Protocol Upload Client!
+
+A primitive multithreaded client that can upload multiple files in parallel. Each file is read from disk and uploaded sequentially, within the thread.
+
+Usage: ./upload-file.sh -e 'http://localhost:8080' [options] file1 file2 ... fileN
+
+Note: Some options don't make sense given multiple files.
+
+Options:
+  -h, --help                       Prints the help
+  -e, --endpoint ENDPOINT          Required. The server endpoint to send requests to, does not include the routes or trailing /.
+  -c, --content-type CONTENT-TYPE  Content-type header for the file to upload. When uploading multiple files,
+          all files will have the same content-type. Defaults to 'video/mp4'.
+  -i, --id ID                      The identifier to use to upload the file under. Defaults to the filename. Do not use if uploading multiple files.
+  -p, --password PASSWORD          A password to use for file retrieval. When uploading multiple files, all files will have the same password.
+  
+```
 
 ## Examples
 
@@ -114,7 +149,6 @@ curl -v 'http://localhost:8081/file/test.txt' -X GET -H "file-password: TEST"
 ```
 
 And a quick test to show the file is removed:
-
 
 ```
 curl -v 'http://localhost:8081/file/test.txt' -X GET -H "file-password: TEST"
