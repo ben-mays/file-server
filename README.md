@@ -21,6 +21,29 @@ The source here is a contrived example of the above approach, an attempt to abst
 
 I expanded on the services oriented approach [in a rough design](https://github.com/ben-mays/designs/blob/master/scalable-file-store/scalable-file-store.md) that was out of scope for this project.
 
+## Clojure
+
+I started the project using Clojure, a language I wasn't too familiar with, but had written a few CLI tools in. To someone not familiar with it, it can appear cryptic. It's interop with Java has led to some neglect regarding the type system (`defrecord`, `deftype`) - and most Clojure projects also include a Java source for defining classes and interfaces.
+
+In retrospect, I wouldn't choose Clojure again. I chose it mainly to become more familiar with it and was partially inspired by [Soundcloud's use of Clojure for web services] (http://blog.josephwilk.net/clojure/building-clojure-services-at-scale.html). 
+
+So to help you decipher the code, here is a overview of each file:
+
+* `/core.clj` - The entry point for the JVM, it:
+   * Sets up the LevelDBStore and passes them to the GhostFile class to be used statically.
+   * Configures the routes and binds them to their handler functions
+   * Sets up instrumentation, loggers and other config (removed for submission)
+	
+* `/interfaces.clj` - Defines interfaces (protocols in Clojure) for the Store and DistributedFile types
+
+* `/file/ghost_file.clj` - An implementation of the DistributedFile protocol that uses a Store implementation to                               construct two stores, 'metadata-store' and 'chunk-store'.
+
+* `/store/leveldb_store.clj` - An implementation of the Store protocol that uses LevelDB.
+
+* `/handler/upload.clj` - Takes a Request object and uses the DistributedFile API to upload files (and chunks) into the system.
+
+* `/handler/retrieve.clj` - Takes a Request object and uses the DistributedFile API to retrieve files.
+
 # Usage
 
 ## Server
