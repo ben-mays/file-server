@@ -1,6 +1,6 @@
 # Overview 
 
-Ghost protocol server built using http-kit and Google's leveldb (thanks to Factual for vending bindings).
+Simple file server built using http-kit and Google's leveldb (thanks to Factual for vending bindings). Project for a potential employer, used to learn Clojure. 
 
 The server has only two routes:
 
@@ -17,17 +17,13 @@ The API has some limitations, see [improvements and limitations](https://github.
 
 I spent a few hours prototyping different approaches and went forward with a design centered around indepedent storage for each chunk and a consistent centralized manifest to place them back together. This allows the storage system to abstract away placement of chunks from the application and place them in the most appropriate place based on implementation. My main goals (beyond the simple protocol) were to support extremely large file uploads and upload files as quickly as possible. In this approach, files can be uploaded in parallel, to/from different servers, with the manifest being the only point of contention. Because the manifest is append-only, writes to the manifest _should_ be extremely quick and consistent. 
 
-The source here is a contrived example of the above approach, an attempt to abstract different layers into 'services'. The abstraction layers are roughly the Application (all the handlers, routing), Storage Server (DistributedFile, GhostFile), Peristence (Store, LevelDBStore).
-
-I expanded on the services oriented approach [in a rough design](https://github.com/ben-mays/designs/blob/master/scalable-file-store/scalable-file-store.md) that was out of scope for this project.
-
 ## Clojure
 
 I started the project using Clojure, a language I wasn't too familiar with, but had written a few CLI tools in. To someone not familiar with it, it can appear cryptic. It's interop with Java has led to some neglect regarding the type system (`defrecord`, `deftype`) - and most Clojure projects also include a Java source for defining classes and interfaces.
 
 In retrospect, I wouldn't choose Clojure again. I chose it mainly to become more familiar with it and was partially inspired by [Soundcloud's use of Clojure for web services] (http://blog.josephwilk.net/clojure/building-clojure-services-at-scale.html). 
 
-So to help you decipher the code, here is a overview of each file:
+Here is a overview of each file:
 
 * `/core.clj` - The entry point for the JVM, it:
    * Sets up the LevelDBStore and passes them to the GhostFile class to be used statically.
